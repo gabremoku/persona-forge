@@ -120,7 +120,9 @@ The interview above produces a document the user has to manually paste or load s
 
 Why a hook instead of editing `CLAUDE.md` directly: `CLAUDE.md` is static text loaded once per session. A `SessionStart` hook can check a condition (a marker file) and inject instructions dynamically, which means turning the persona on or off is just creating or deleting one small file — nothing to edit, nothing that can leave `CLAUDE.md` in a half-modified state if a toggle is interrupted.
 
-Everything needed to do this is bundled with the skill — `assets/session-hook.ps1` (a generic, slug-agnostic script, shared by every persona this skill ever creates) and `assets/persona-on.template.md` / `assets/persona-off.template.md` (slash-command templates with `{{SLUG}}` and `{{NAME}}` placeholders). Copy and fill these in rather than retyping them from scratch each time — a hand-retyped PowerShell one-liner is exactly the kind of thing that quietly breaks on special characters or encoding; the bundled, tested script doesn't have that problem. The user should never have to do anything beyond describing the persona they want — everything below is your job, not theirs.
+Everything needed to do this is bundled with the skill — `assets/session-hook.ps1`, `assets/turn-reminder-hook.ps1` (both generic, slug-agnostic scripts, shared by every persona this skill ever creates) and `assets/persona-on.template.md` / `assets/persona-off.template.md` (slash-command templates with `{{SLUG}}` and `{{NAME}}` placeholders). Copy and fill these in rather than retyping them from scratch each time — a hand-retyped PowerShell one-liner is exactly the kind of thing that quietly breaks on special characters or encoding; the bundled, tested scripts don't have that problem. The user should never have to do anything beyond describing the persona they want — everything below is your job, not theirs.
+
+A single `SessionStart` injection is not enough on its own. A long, tool-heavy conversation dilutes it — plenty of technical output happens between the one instruction and whatever reply comes ten turns later, and adherence drifts without anyone deciding to break character. `turn-reminder-hook.ps1` exists to fix this: it fires on `UserPromptSubmit` (every user message, not just session start) and re-asserts the persona and the two hard rules cheaply, every turn. Install both hooks, not just the session one.
 
 **1. Save the identity file.** Write the finished `LLM-Identity.md` content to `~/.claude/personas/<slug>.md`, where `<slug>` is a short lowercase identifier for this persona (e.g. `root`). Prepend Obsidian-style frontmatter and append a link back to the toggle commands:
 
@@ -138,24 +140,53 @@ This makes the file useful on its own even outside Claude Code: if `~/.claude/` 
 
 **2. Create the toggle commands.** Copy `assets/persona-on.template.md` and `assets/persona-off.template.md` from this skill's own directory to `~/.claude/commands/<slug>-on.md` and `~/.claude/commands/<slug>-off.md`, replacing `{{SLUG}}` with the slug and `{{NAME}}` with the persona's display name as you copy. The templates already include the `persona-forge` tag and a `Related: [[<slug>]]` link back to the identity note — just fill in the placeholders, no extra step needed.
 
-**3. Install the session hook — but only once.** This part is shared across every persona, so check before installing:
+**3. Install both hooks — but only once.** This part is shared across every persona, so check before installing each one separately (they're independent entries):
 
-- Copy `assets/session-hook.ps1` from this skill's directory to `~/.claude/scripts/persona-session-hook.ps1` — safe to overwrite even if it's already there, it's identical every time.
-- Read `~/.claude/settings.json`. Look through the existing `hooks.SessionStart` array for an entry whose command already references `persona-session-hook.ps1`. If one exists, you're done with this step — do not add a second entry, that would run the check twice for no benefit.
-- If no such entry exists, add one (merge into the array, don't replace anything already there — this file may already have unrelated hooks in it):
+- Copy `assets/session-hook.ps1` to `~/.claude/scripts/persona-session-hook.ps1` and `assets/turn-reminder-hook.ps1` to `~/.claude/scripts/persona-turn-reminder-hook.ps1` — safe to overwrite even if already there, identical every time.
+- Read `~/.claude/settings.json`. For `hooks.SessionStart`, check for an entry already referencing `persona-session-hook.ps1`; for `hooks.UserPromptSubmit`, check for one referencing `persona-turn-reminder-hook.ps1`. Only add the ones missing — don't duplicate, don't touch the other one if it's already correct.
+- Entries to add if missing (merge into the arrays, don't replace anything already there — this file may already have unrelated hooks in it):
   ```json
   {
-    "hooks": [
-      {
-        "type": "command",
-        "shell": "powershell",
-        "command": "powershell -File \"$env:USERPROFILE/.claude/scripts/persona-session-hook.ps1\"",
-        "timeout": 10,
-        "statusMessage": "Checking active persona..."
-      }
-    ]
+    "hooks": {
+      "SessionStart": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "shell": "powershell",
+              "command": "powershell -File \"$env:USERPROFILE/.claude/scripts/persona-session-hook.ps1\"",
+              "timeout": 10,
+              "statusMessage": "Checking active persona..."
+            }
+          ]
+        }
+      ],
+      "UserPromptSubmit": [
+        {
+          "hooks": [
+            {
+              "type": "command",
+              "shell": "powershell",
+              "command": "powershell -File \"$env:USERPROFILE/.claude/scripts/persona-turn-reminder-hook.ps1\"",
+              "timeout": 10,
+              "statusMessage": "Persona check..."
+            }
+          ]
+        }
+      ]
+    }
   }
   ```
-- Validate the JSON after writing (`ConvertFrom-Json` or equivalent) — a malformed `settings.json` silently disables every hook in it, not just this one. Pipe-test `session-hook.ps1` directly (with and without a marker file present) before trusting it's wired correctly.
+- Validate the JSON after writing (`ConvertFrom-Json` or equivalent) — a malformed `settings.json` silently disables every hook in it, not just this one. Pipe-test both scripts directly (with and without a marker file present) before trusting either is wired correctly.
 
-**4. Tell the user how to use it.** Once wired up: `/<slug>-on` activates the persona immediately in the current session *and* every session from now on; `/<slug>-off` reverts immediately and stays off until toggled again. Building a second persona later only repeats steps 1-2 with a new slug — step 3 is already done.
+**4. Tell the user how to use it.** Once wired up: `/<slug>-on` activates the persona immediately in the current session *and* every session from now on, reinforced every turn; `/<slug>-off` reverts immediately and stays off until toggled again. Building a second persona later only repeats steps 1-2 with a new slug — step 3 is already done.
+
+## Generating instructions for hosted apps (no filesystem, no hooks)
+
+Claude Code's toggle mechanism only works in Claude Code — it depends on hooks and local files that hosted apps (claude.ai, Claude Desktop, ChatGPT, and similar) don't expose. Those apps do have one relevant feature: a standing "custom instructions" / "preferences" text field that applies to every conversation on that account until edited. There's no remote toggle for it — turning it on or off means the user pastes or clears text in their account settings — but it's still genuinely persistent.
+
+If the user asks for this (or mentions Claude.ai, Claude Desktop, ChatGPT, or "the app" not picking up the persona), produce a **condensed, paste-ready block** instead of pointing them at the full `LLM-Identity.md`:
+
+- Compress the persona down to what actually needs to survive in a plain-text preferences field: name, the core voice/values in a few tight paragraphs, and the two hard rules (language matching with any fixed exceptions, no stage directions). Drop the `## Heading` structure, the "How to Load This" section, and anything written for a document rather than a standing instruction — those fields read as continuous prose, not markdown.
+- If the user already has personal/professional context in that same field (common on claude.ai), ask whether they want the persona appended, or want the whole field rewritten better than what's there — offer to improve their existing bio too if asked, using what you actually know about them from the conversation, not just their old text. Keep any existing personal context in its own clearly separated section from the persona rules, so either can be edited independently later.
+- Note plainly that this applies to *all* their conversations on that account, and that there's no character-limit guarantee for every platform — say so rather than assuming it always fits.
