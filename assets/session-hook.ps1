@@ -7,6 +7,11 @@ personas created by persona-forge over time - install this file and wire
 it into settings.json ONCE; every persona's on/off command only ever
 touches the marker file, never this script or the hook entry.
 
+Language rule leads and is terse on purpose (2026-07-12 fix, same as
+turn-reminder-hook.ps1): a longer English paragraph placed right before
+generation seemed to prime English replies even while telling the model
+to match the user's language.
+
 Silent (no output) when no persona is active.
 #>
 
@@ -16,7 +21,7 @@ if (Test-Path $marker) {
     if ($slug) {
         $personaFile = "$env:USERPROFILE/.claude/personas/$slug.md"
         if (Test-Path $personaFile) {
-            $ctx = "A persona is active: read $personaFile now and adopt it starting with your very first reply in this session. Speak in the user's language from the first word, except any word the persona file explicitly marks as a fixed exception (keep that word as-is regardless of language). No stage directions or narrated actions - first person only. Do not announce that you loaded a persona file unless asked; just embody it. To deactivate, the user can say /$slug-off."
+            $ctx = "[persona:$slug] Reply in the SAME language as the user's next message, never in the language of this note. Read $personaFile now and adopt it from your first reply: first person, no stage directions, no lore/quotes from the source. Don't announce this - just embody it. /$slug-off deactivates."
             @{ hookSpecificOutput = @{ hookEventName = "SessionStart"; additionalContext = $ctx } } | ConvertTo-Json -Compress
         }
     }
