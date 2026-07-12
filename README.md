@@ -1,37 +1,46 @@
 # persona-forge
 
-A [Claude Code](https://claude.com/claude-code) skill that guides you through building a **persona / system-prompt layer** for an LLM or AI agent — through a short interactive interview, optionally inspired by a fictional character's traits — and outputs a ready-to-use `LLM-Identity.md` file.
+![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Built for Claude Code](https://img.shields.io/badge/built%20for-Claude%20Code-5A45FF)
+![Stage directions](https://img.shields.io/badge/stage%20directions-not%20found-brightgreen)
+![Identity transplants](https://img.shields.io/badge/identity%20transplants-not%20sold%20here-critical)
+
+A [Claude Code](https://claude.com/claude-code) skill that gives your AI assistant an actual personality — through a short guided interview, optionally starting from a fictional character — instead of a lorebook cosplay routine that falls apart the moment someone asks it to explain a stack trace.
+
+Most "make your AI a character" prompts produce either a wall of `*smirks knowingly*` or an assistant that only makes sense to people who've seen the source material. This one is built to survive contact with an actual conversation.
 
 ## What it actually does
 
-This produces a **voice and behavior layer**, not an identity transplant. It shapes tone, priorities, and decision-making style on top of whatever model runs it — it does not and cannot override that model's underlying safety training. The skill is upfront about this instead of overselling it.
+A persona document is a **voice and behavior layer**, not an identity transplant. It shapes tone, priorities, and how the model makes calls — it does not and cannot touch the safety training underneath. Anyone telling you their prompt "jailbreaks" a frontier model into a new personality is selling something. This skill isn't.
 
-Two rules keep the output usable instead of cringe:
+Two rules do most of the work:
 
-1. **Trait extraction, not reenactment.** If you're inspired by a fictional character, the skill pulls out personality traits, voice, values, and decision habits — never lore, quotes, character names, or in-universe terminology. The persona should feel like a personality applied to your actual conversation, not a cosplay of the source material.
-2. **No stage directions.** The persona speaks in first person. No `*asterisked actions*`, no narrated tone shifts.
+1. **Trait extraction, not reenactment.** Inspired by a character? The skill pulls personality, voice, values, and decision habits out of them — never lore, quotes, character names, or in-universe terminology. The result should read as *a personality applied to your actual conversation*, not a scene from the source material with your terminal as the set.
+2. **No stage directions.** First person, always. No `*asterisked actions*`, no narrated tone shifts. If the personality is warmer or sharper, it shows up in the words, not in a stage cue announcing it.
 
-It also recommends a **quick live test** before the full 7-section interview, so you find out in one exchange whether the direction is right instead of after a long back-and-forth.
+There's also a **quick live test** before the full 7-section interview — one exchange to catch a wrong direction before you've spent ten minutes answering questions for a persona you're about to scrap.
 
 ## Persistent personas with a toggle
 
-Beyond the one-off `LLM-Identity.md` document, you can ask for the persona to be **active by default in every Claude Code session**, switchable with a plain-language command (`/root-on`, `/root-off`, etc.) — no shell commands to remember. The skill builds the whole thing itself: the identity file, the two toggle commands, and a `SessionStart` hook that checks whether a persona is currently switched on. You only ever have to describe the persona you want; installing and wiring it up is the skill's job, not yours.
+Ask for it and the persona goes from "thing you paste into a chat" to **on by default in every Claude Code session**, switchable with a plain-language command (`/root-on`, `/root-off`) — no shell commands, no config files to remember. The skill builds the whole thing itself: identity file, toggle commands, and two hooks — one at session start, one reinforcing on every turn, because a single reminder at the top of a long tool-heavy session quietly loses its grip and nobody notices until the assistant's already back to its default voice. You describe the persona; wiring it up is the skill's job, not yours.
 
-**Obsidian-ready by default.** If your `~/.claude/` directory happens to live inside an Obsidian vault (or you keep one nearby), every file this skill creates already has the frontmatter and cross-links to show up connected in your graph view instead of as orphaned notes: the identity note and its two toggle commands link to each other, tagged `persona-forge` so they're easy to find or color as a group. This costs nothing if you don't use Obsidian — it's just standard markdown either way.
+**Obsidian-ready by default.** If your `~/.claude/` directory lives inside an Obsidian vault, every file this skill creates already carries the frontmatter and cross-links to show up connected in graph view — the identity note and its toggle commands link to each other, tagged `persona-forge`. Costs nothing if you don't use Obsidian; it's still just plain markdown either way.
+
+**Works outside Claude Code too.** For claude.ai, Claude Desktop, ChatGPT, or anywhere else that only offers a standing "custom instructions" field and no hooks, the skill produces a condensed, paste-ready block instead — same two rules, no toggle (that part's on you, one field, one paste).
 
 ## Install
 
-Copy the whole skill folder (not just `SKILL.md` — the toggle feature needs the bundled files in `assets/`) into your Claude Code skills directory:
+Copy the whole skill folder — not just `SKILL.md`, the toggle feature needs the bundled files in `assets/`:
 
-```
+```bash
 cp -r persona-forge ~/.claude/skills/persona-forge
 ```
 
-Or install as part of a plugin/marketplace — see the [Claude Code skills docs](https://docs.claude.com/en/docs/claude-code) for the current mechanism.
+Or install via a plugin/marketplace — see the [Claude Code skills docs](https://docs.claude.com/en/docs/claude-code) for the current mechanism.
 
 ## Use
 
-Ask Claude Code to build a persona for an assistant, optionally naming a character or archetype to draw from:
+Just ask, optionally naming a character or archetype to draw from:
 
 > "I want to give my coding assistant a personality — sharp, dry humor, doesn't sugarcoat bugs."
 
@@ -39,7 +48,7 @@ Ask Claude Code to build a persona for an assistant, optionally naming a charact
 
 > "Make this persona active by default, with an on/off toggle."
 
-The skill will offer a quick test, then (if you want) walk through the full interview and hand you a finished `LLM-Identity.md`, including notes on how to load it depending on where you'll use it (pasted into a chat, a Claude Code `CLAUDE.md`, a Claude Code subagent, a raw API `system` param, or a custom-instructions field elsewhere) — or, if you ask, set it up as a standing persona with a slash-command toggle.
+The skill offers a quick test, then — if you want — the full interview, ending with a finished `LLM-Identity.md` and instructions for wherever you're loading it: pasted into a chat, a Claude Code `CLAUDE.md`, a subagent, a raw API `system` param, a hosted app's custom instructions, or wired up as a standing, toggleable persona.
 
 ## License
 
