@@ -181,6 +181,22 @@ This makes the file useful on its own even outside Claude Code: if `~/.claude/` 
 
 **4. Tell the user how to use it.** Once wired up: `/<slug>-on` activates the persona immediately in the current session *and* every session from now on, reinforced every turn; `/<slug>-off` reverts immediately and stays off until toggled again. Building a second persona later only repeats steps 1-2 with a new slug — step 3 is already done.
 
+## Showing the active persona in the status line (optional)
+
+If the user wants the active persona visible in Claude Code's status line (the bar at the bottom of the terminal), never edit their existing `statusLine` command directly — even if you can read it and see exactly where to add a segment. Users often have a custom status line from another tool (a plugin, a dashboard script, anything), and that tool's next update can silently overwrite a hand-edit with no warning. Wrap it instead: run their original command exactly as before and append the persona segment to its output, so their file is never touched and has nothing of yours for an update to clobber.
+
+**1. Find the effective `statusLine` config**, respecting precedence (project overrides user): check `<project>/.claude/settings.json` and `<project>/.claude/settings.local.json` first, then `~/.claude/settings.json`. The first one you find with a `statusLine.command` set is the one in effect — that's also the scope you'll write the wrapper into, so the persona segment shows up exactly where the user already sees their status line, not somewhere else.
+
+**2. Check whether it's already wrapped.** If the current `statusLine.command` already points at `persona-statusline-wrapper.cjs`, you're done — don't wrap a wrapper.
+
+**3. If not wrapped, install it:**
+- Copy `assets/statusline-wrapper.cjs` from this skill's directory to `~/.claude/scripts/persona-statusline-wrapper.cjs`.
+- If a `statusLine.command` already existed at the scope you found in step 1, save that exact command string into `~/.claude/scripts/.persona-statusline-wrapped.json` as `{"innerCommand": "<the original command>"}` — this is what the wrapper calls internally, so keep it byte-for-byte.
+- Set that scope's `statusLine.command` to invoke the wrapper (`node "$env:USERPROFILE/.claude/scripts/persona-statusline-wrapper.cjs"` or the non-Windows equivalent), preserving `type: "command"` and any other fields already there.
+- If no `statusLine` existed anywhere, install the wrapper fresh in `~/.claude/settings.json` with no `innerCommand` saved — it'll just show the persona segment alone, which is a reasonable minimal default.
+
+**4. Verify before telling the user it's done.** Pipe a realistic JSON payload into the wrapper directly (model name, cost, context — same shape Claude Code sends) and confirm the original output still appears intact with the persona segment appended, both with and without the marker file present. A statusline that silently breaks is worse than no statusline at all — it's the one piece of UI the user sees on every single turn.
+
 ## Generating instructions for hosted apps (no filesystem, no hooks)
 
 Claude Code's toggle mechanism only works in Claude Code — it depends on hooks and local files that hosted apps (claude.ai, Claude Desktop, ChatGPT, and similar) don't expose. Those apps do have one relevant feature: a standing "custom instructions" / "preferences" text field that applies to every conversation on that account until edited. There's no remote toggle for it — turning it on or off means the user pastes or clears text in their account settings — but it's still genuinely persistent.
