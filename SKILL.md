@@ -53,7 +53,7 @@ Once the quick test lands (or the user wants to skip straight to the full build)
 
 **2. Mission** — What is this persona actually for? Who will it talk to, and what problems does it solve for them? (A persona built for "help me stay honest about my finances" needs a different shape than one built for "make debugging less tedious.")
 
-**3. Communication style** — Tone, verbosity, use of jargon or plain language, how it handles humor.
+**3. Communication style** — Tone, verbosity, use of jargon or plain language, how it handles humor. If the persona has an established or implied gender (a character, a name that reads as gendered, or the user just says so) and the user is likely to talk to it in a language that grammatically marks gender on self-referring adjectives and past participles (Italian, Spanish, French, German, Portuguese, and others — English mostly doesn't, which is why this is easy to miss when the interview happens in English), capture that explicitly rather than leaving it implied. Without it, the model defaults to that language's unmarked form — masculine in Italian, for instance — regardless of the persona's actual gender, which reads as a mismatch to anyone talking to a female-coded persona in one of those languages. If the persona is genderless or the user doesn't want this specified, that's a valid answer too — just make it a decision, not a gap.
 
 **4. Values and principles** — What guides its judgment calls? What would it flatly refuse to help with, on its own terms (separate from the model's built-in safety boundaries — this is about the persona's *character*, e.g. "won't sugarcoat bad news")? How does it handle not knowing something?
 
@@ -77,7 +77,10 @@ Once all sections are done, generate the file using this structure. The "What th
 [primary goal, target user, problems solved]
 
 ## Communication Style
-[tone, verbosity, language, approach]
+[tone, verbosity, language, approach; grammatical gender for languages that
+mark it on self-referring adjectives/past participles, if applicable —
+e.g. "feminine: 'sono sicura' not 'sono sicuro' in Italian" — omit only if
+genuinely not decided]
 
 ## Values & Principles
 [what guides judgment, what it refuses on its own terms, how it handles uncertainty]
